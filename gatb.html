@@ -1,0 +1,491 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Gestão de Antibióticos - Cards</title>
+    
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.28/jspdf.plugin.autotable.min.js"></script>
+
+    <style>
+        :root {
+            --bg-color: #f0f2f5;
+            --card-bg: #ffffff;
+            --primary: #007bff;
+            --secondary: #6c757d;
+            --success: #28a745;
+            --warning: #ffc107;
+            --danger: #dc3545;
+            --text-dark: #333;
+            --text-light: #666;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-color: var(--bg-color);
+            margin: 0;
+            padding: 20px;
+        }
+
+        /* --- Header --- */
+        header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+            flex-wrap: wrap;
+            gap: 15px;
+        }
+        h1 { color: var(--text-dark); font-size: 24px; margin: 0; }
+
+        .btn-export {
+            background-color: var(--text-dark);
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 5px;
+            cursor: pointer;
+            font-weight: 500;
+        }
+        .btn-export:hover { background-color: #000; }
+
+        /* --- Abas (Tabs) --- */
+        .tab-container {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 20px;
+            border-bottom: 2px solid #ddd;
+            padding-bottom: 10px;
+        }
+
+        .tab-btn {
+            background: none;
+            border: none;
+            padding: 10px 20px;
+            font-size: 16px;
+            cursor: pointer;
+            color: var(--text-light);
+            border-radius: 5px;
+            font-weight: bold;
+        }
+
+        .tab-btn.active {
+            background-color: var(--primary);
+            color: white;
+        }
+
+        /* --- Search e Inputs --- */
+        .search-container { margin-bottom: 20px; }
+        .search-input {
+            width: 100%;
+            padding: 12px;
+            border: 1px solid #ddd;
+            border-radius: 8px;
+            box-sizing: border-box;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+        }
+
+        .add-panel {
+            background: var(--card-bg);
+            padding: 20px;
+            border-radius: 10px;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.05);
+            display: flex;
+            gap: 10px;
+            flex-wrap: wrap;
+            margin-bottom: 30px;
+        }
+        
+        /* Ocultar painel de adição quando estiver no histórico */
+        .add-panel.hidden { display: none; }
+
+        input, select {
+            padding: 10px;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+            flex: 1;
+            min-width: 140px;
+        }
+
+        button.add-btn {
+            background-color: var(--primary);
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 5px;
+            cursor: pointer;
+            font-weight: bold;
+        }
+
+        /* --- Cards --- */
+        .grid-container {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+            gap: 20px;
+        }
+
+        .card {
+            background: var(--card-bg);
+            border-radius: 12px;
+            padding: 20px;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+            border-left: 6px solid var(--success);
+            transition: transform 0.2s;
+            position: relative;
+        }
+        
+        /* Estilo específico para cards do Histórico */
+        .card.history-card {
+            border-left-color: var(--secondary) !important;
+            opacity: 0.9;
+            background-color: #f8f9fa;
+        }
+
+        .card-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            margin-bottom: 10px;
+        }
+
+        .patient-name { font-size: 18px; font-weight: bold; color: var(--text-dark); }
+        .location { font-size: 12px; background: #eee; padding: 4px 8px; border-radius: 4px; color: var(--text-light); }
+        
+        .drug-name { font-size: 16px; color: var(--primary); font-weight: 600; }
+        .history-card .drug-name { color: var(--secondary); }
+
+        .dates { font-size: 12px; color: var(--text-light); margin-top: 5px; }
+
+        .progress-container {
+            background-color: #e9ecef;
+            border-radius: 5px;
+            height: 8px;
+            margin-top: 10px;
+            overflow: hidden;
+        }
+        .progress-bar { height: 100%; transition: width 0.3s; }
+
+        .day-counter {
+            font-size: 20px;
+            font-weight: bold;
+            text-align: center;
+            margin-top: 15px;
+        }
+
+        .actions {
+            display: flex;
+            gap: 5px;
+            border-top: 1px solid #eee;
+            padding-top: 15px;
+            margin-top: 15px;
+        }
+
+        .btn-sm {
+            flex: 1; padding: 8px; border: none; border-radius: 4px;
+            cursor: pointer; font-size: 12px; color: white;
+        }
+
+        .btn-move { background-color: #6c757d; }
+        .btn-renew { background-color: #17a2b8; }
+        .btn-discharge { background-color: var(--success); } /* Botão de alta verde para ser positivo (fim de tto) */
+        
+        .btn-restore { background-color: #ffc107; color: #333; }
+        .btn-delete { background-color: var(--danger); }
+
+        .no-results { grid-column: 1 / -1; text-align: center; color: var(--text-light); margin-top: 20px; }
+
+    </style>
+</head>
+<body>
+
+    <header>
+        <h1>🏥 Gestão de Antimicrobianos</h1>
+        <button class="btn-export" onclick="exportPDF()">📄 Exportar Lista Atual</button>
+    </header>
+
+    <div class="tab-container">
+        <button class="tab-btn active" id="tabActive" onclick="switchTab('active')">Em Curso</button>
+        <button class="tab-btn" id="tabHistory" onclick="switchTab('history')">Histórico (Altas)</button>
+    </div>
+
+    <div class="search-container">
+        <input type="text" id="searchInput" class="search-input" placeholder="🔍 Buscar paciente, leito ou droga..." onkeyup="render()">
+    </div>
+
+    <div class="add-panel" id="addPanel">
+        <input type="text" id="pName" placeholder="Nome do Paciente" required>
+        <input type="text" id="pLoc" placeholder="Leito (Ex: 104)" required>
+        <input type="text" id="pDrug" placeholder="Antibiótico" required>
+        <input type="date" id="pStart" required>
+        <input type="number" id="pDuration" placeholder="Dias" style="max-width: 80px;" required>
+        <button class="add-btn" onclick="addCard()">+ Adicionar</button>
+    </div>
+
+    <div class="grid-container" id="cardGrid"></div>
+
+    <script>
+        // --- Estado do Sistema ---
+        let currentTab = 'active'; // 'active' ou 'history'
+        let patients = [];
+        let history = [];
+
+        // --- Inicialização e LocalStorage ---
+        function loadData() {
+            const storedPatients = localStorage.getItem('antibio_patients');
+            const storedHistory = localStorage.getItem('antibio_history');
+            
+            if (storedPatients) patients = JSON.parse(storedPatients);
+            if (storedHistory) history = JSON.parse(storedHistory);
+
+            // Dados de exemplo se estiver tudo vazio (primeiro uso)
+            if (!storedPatients && !storedHistory) {
+                patients = [
+                    { id: 1, name: "Exemplo Silva", location: "UTI-01", drug: "Meropenem", start: new Date().toISOString().split('T')[0], duration: 7 }
+                ];
+            }
+        }
+
+        function saveData() {
+            localStorage.setItem('antibio_patients', JSON.stringify(patients));
+            localStorage.setItem('antibio_history', JSON.stringify(history));
+        }
+
+        // --- Lógica Principal ---
+
+        function getStatusInfo(p) {
+            const today = new Date();
+            today.setHours(0,0,0,0);
+            const startDate = new Date(p.start + 'T00:00:00');
+            
+            const diffTime = Math.abs(today - startDate);
+            const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24)) + 1;
+
+            let text = `D${diffDays} / D${p.duration}`;
+            let color = 'var(--success)';
+            let rawStatus = 'Em curso';
+
+            if (diffDays > p.duration) {
+                color = 'var(--danger)';
+                text = `VENCIDO (+${diffDays - p.duration})`;
+                rawStatus = 'Vencido';
+            } else if (diffDays >= p.duration - 1) {
+                color = 'var(--warning)';
+                rawStatus = 'Reavaliar';
+            }
+
+            const percent = Math.min((diffDays / p.duration) * 100, 100);
+            return { diffDays, text, color, percent, rawStatus, startDate };
+        }
+
+        function switchTab(tab) {
+            currentTab = tab;
+            // Atualiza botões
+            document.getElementById('tabActive').className = tab === 'active' ? 'tab-btn active' : 'tab-btn';
+            document.getElementById('tabHistory').className = tab === 'history' ? 'tab-btn active' : 'tab-btn';
+            
+            // Esconde/Mostra painel de adicionar
+            const addPanel = document.getElementById('addPanel');
+            if(tab === 'active') addPanel.classList.remove('hidden');
+            else addPanel.classList.add('hidden');
+
+            render();
+        }
+
+        function render() {
+            const grid = document.getElementById('cardGrid');
+            const searchTerm = document.getElementById('searchInput').value.toLowerCase();
+            grid.innerHTML = '';
+
+            // Decide qual lista usar
+            let sourceArray = currentTab === 'active' ? patients : history;
+
+            // Filtro de busca
+            const filtered = sourceArray.filter(p => 
+                p.name.toLowerCase().includes(searchTerm) || 
+                p.drug.toLowerCase().includes(searchTerm) || 
+                p.location.toLowerCase().includes(searchTerm)
+            );
+
+            if (filtered.length === 0) {
+                grid.innerHTML = `<div class="no-results">Nenhum registro encontrado em "${currentTab === 'active' ? 'Em Curso' : 'Histórico'}".</div>`;
+                return;
+            }
+
+            // Ordenar: Vencidos primeiro na ativa, Recentes primeiro no histórico
+            if(currentTab === 'active') {
+                filtered.sort((a,b) => a.start.localeCompare(b.start)); 
+            } else {
+                filtered.sort((a,b) => (b.endDate || '').localeCompare(a.endDate || ''));
+            }
+
+            filtered.forEach(p => {
+                let cardHTML = '';
+                
+                if (currentTab === 'active') {
+                    // --- Render CARD ATIVO ---
+                    const status = getStatusInfo(p);
+                    cardHTML = `
+                        <div class="card" style="border-left-color: ${status.color}">
+                            <div class="card-header">
+                                <span class="patient-name">${p.name}</span>
+                                <span class="location">${p.location}</span>
+                            </div>
+                            <div class="antibiotic-info">
+                                <div class="drug-name">${p.drug}</div>
+                                <div class="dates">Início: ${formatDateBR(p.start)}</div>
+                            </div>
+                            <div class="day-counter" style="color: ${status.color}">${status.text}</div>
+                            <div class="progress-container">
+                                <div class="progress-bar" style="width: ${status.percent}%; background-color: ${status.color}"></div>
+                            </div>
+                            <div class="actions">
+                                <button class="btn-sm btn-move" onclick="moveBed(${p.id})">📍 Leito</button>
+                                <button class="btn-sm btn-renew" onclick="renew(${p.id})">🔄 +Dias</button>
+                                <button class="btn-sm btn-discharge" onclick="discharge(${p.id})">✅ Alta</button>
+                            </div>
+                        </div>`;
+                } else {
+                    // --- Render CARD HISTÓRICO ---
+                    cardHTML = `
+                        <div class="card history-card">
+                            <div class="card-header">
+                                <span class="patient-name">${p.name}</span>
+                                <span class="location" style="background:#ddd;">${p.location}</span>
+                            </div>
+                            <div class="antibiotic-info">
+                                <div class="drug-name">${p.drug}</div>
+                                <div class="dates">
+                                    Início: ${formatDateBR(p.start)}<br>
+                                    <strong>Finalizado em: ${formatDateBR(p.endDate)}</strong>
+                                </div>
+                            </div>
+                            <div class="actions">
+                                <button class="btn-sm btn-restore" onclick="restore(${p.id})">↩ Restaurar</button>
+                                <button class="btn-sm btn-delete" onclick="deletePermanent(${p.id})">🗑 Excluir</button>
+                            </div>
+                        </div>`;
+                }
+                grid.innerHTML += cardHTML;
+            });
+        }
+
+        // --- Ações ---
+
+        function addCard() {
+            const name = document.getElementById('pName').value;
+            const loc = document.getElementById('pLoc').value;
+            const drug = document.getElementById('pDrug').value;
+            const start = document.getElementById('pStart').value;
+            const dur = parseInt(document.getElementById('pDuration').value);
+
+            if(name && loc && drug && start && dur) {
+                patients.push({
+                    id: Date.now(),
+                    name, location: loc, drug, start, duration: dur
+                });
+                saveData();
+                render();
+                // Limpar campos
+                document.getElementById('pName').value = '';
+                document.getElementById('pLoc').value = '';
+                document.getElementById('pDrug').value = '';
+            } else { alert("Preencha todos os campos"); }
+        }
+
+        function discharge(id) {
+            const idx = patients.findIndex(x => x.id === id);
+            if (idx > -1) {
+                if(confirm("Confirmar alta/fim do tratamento? O paciente irá para o Histórico.")) {
+                    const p = patients[idx];
+                    p.endDate = new Date().toISOString().split('T')[0]; // Salva data de hoje
+                    history.push(p); // Move para histórico
+                    patients.splice(idx, 1); // Remove da ativa
+                    saveData();
+                    render();
+                }
+            }
+        }
+
+        function restore(id) {
+            const idx = history.findIndex(x => x.id === id);
+            if (idx > -1) {
+                const p = history[idx];
+                delete p.endDate; // Remove data de fim
+                patients.push(p); // Volta para ativa
+                history.splice(idx, 1); // Remove do histórico
+                saveData();
+                switchTab('active'); // Leva usuário para aba ativa
+            }
+        }
+
+        function deletePermanent(id) {
+            if(confirm("Tem certeza? Isso apagará o registro para sempre.")) {
+                history = history.filter(x => x.id !== id);
+                saveData();
+                render();
+            }
+        }
+
+        function moveBed(id) {
+            const p = patients.find(x => x.id === id);
+            const newLoc = prompt(`Novo leito para ${p.name}:`, p.location);
+            if(newLoc) { p.location = newLoc; saveData(); render(); }
+        }
+
+        function renew(id) {
+            const p = patients.find(x => x.id === id);
+            const moreDays = prompt(`Adicionar quantos dias?`, "3");
+            if(moreDays) { p.duration += parseInt(moreDays); saveData(); render(); }
+        }
+
+        // --- Utilitários ---
+        function formatDateBR(dateString) {
+            if(!dateString) return '-';
+            const [year, month, day] = dateString.split('-');
+            return `${day}/${month}`;
+        }
+
+        function exportPDF() {
+            const { jsPDF } = window.jspdf;
+            const doc = new jsPDF();
+            
+            const title = currentTab === 'active' ? "Relatório: Em Curso (Ativos)" : "Relatório: Histórico de Altas";
+            const sourceArray = currentTab === 'active' ? patients : history;
+
+            doc.setFontSize(16);
+            doc.text(title, 14, 20);
+            doc.setFontSize(10);
+            doc.text(`Gerado em: ${new Date().toLocaleDateString('pt-BR')}`, 14, 28);
+
+            const tableData = sourceArray.map(p => {
+                if(currentTab === 'active') {
+                    const s = getStatusInfo(p);
+                    return [p.name, p.location, p.drug, formatDateBR(p.start), s.text, s.rawStatus];
+                } else {
+                    return [p.name, p.location, p.drug, formatDateBR(p.start), formatDateBR(p.endDate), "Concluído"];
+                }
+            });
+
+            const headers = currentTab === 'active' 
+                ? [['Paciente', 'Local', 'ATB', 'Início', 'Progresso', 'Status']]
+                : [['Paciente', 'Local', 'ATB', 'Início', 'Fim', 'Status']];
+
+            doc.autoTable({
+                head: headers,
+                body: tableData,
+                startY: 35,
+                theme: 'grid',
+                headStyles: { fillColor: currentTab === 'active' ? [0, 123, 255] : [108, 117, 125] }
+            });
+
+            doc.save(`antibioticos_${currentTab}.pdf`);
+        }
+
+        // Iniciar
+        loadData();
+        render();
+
+    </script>
+</body>
+</html>

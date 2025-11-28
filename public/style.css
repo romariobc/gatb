@@ -1,0 +1,308 @@
+/**
+ * GATB - Gestão de Antimicrobianos
+ * Arquivo de estilos CSS
+ * Desenvolvido para ambiente hospitalar
+ */
+
+/* ========================================
+   VARIÁVEIS CSS (Design Tokens)
+   ======================================== */
+:root {
+    --bg-color: #f0f2f5;
+    --card-bg: #ffffff;
+    --primary: #007bff;
+    --secondary: #6c757d;
+    --success: #28a745;
+    --warning: #ffc107;
+    --danger: #dc3545;
+    --text-dark: #333;
+    --text-light: #666;
+}
+
+/* ========================================
+   RESET E ESTILOS GLOBAIS
+   ======================================== */
+body {
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    background-color: var(--bg-color);
+    margin: 0;
+    padding: 20px;
+}
+
+/* ========================================
+   HEADER (CABEÇALHO)
+   ======================================== */
+header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 20px;
+    flex-wrap: wrap;
+    gap: 15px;
+}
+
+h1 {
+    color: var(--text-dark);
+    font-size: 24px;
+    margin: 0;
+}
+
+.btn-export {
+    background-color: var(--text-dark);
+    color: white;
+    border: none;
+    padding: 10px 20px;
+    border-radius: 5px;
+    cursor: pointer;
+    font-weight: 500;
+}
+
+.btn-export:hover {
+    background-color: #000;
+}
+
+/* ========================================
+   SISTEMA DE ABAS (TABS)
+   ======================================== */
+.tab-container {
+    display: flex;
+    gap: 10px;
+    margin-bottom: 20px;
+    border-bottom: 2px solid #ddd;
+    padding-bottom: 10px;
+}
+
+.tab-btn {
+    background: none;
+    border: none;
+    padding: 10px 20px;
+    font-size: 16px;
+    cursor: pointer;
+    color: var(--text-light);
+    border-radius: 5px;
+    font-weight: bold;
+}
+
+.tab-btn.active {
+    background-color: var(--primary);
+    color: white;
+}
+
+/* ========================================
+   BUSCA E INPUTS
+   ======================================== */
+.search-container {
+    margin-bottom: 20px;
+}
+
+.search-input {
+    width: 100%;
+    padding: 12px;
+    border: 1px solid #ddd;
+    border-radius: 8px;
+    box-sizing: border-box;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+}
+
+/* Painel de adição de pacientes */
+.add-panel {
+    background: var(--card-bg);
+    padding: 20px;
+    border-radius: 10px;
+    box-shadow: 0 2px 5px rgba(0,0,0,0.05);
+    display: flex;
+    gap: 10px;
+    flex-wrap: wrap;
+    margin-bottom: 30px;
+}
+
+/* Ocultar painel de adição quando estiver visualizando histórico */
+.add-panel.hidden {
+    display: none;
+}
+
+input, select {
+    padding: 10px;
+    border: 1px solid #ddd;
+    border-radius: 5px;
+    flex: 1;
+    min-width: 140px;
+}
+
+button.add-btn {
+    background-color: var(--primary);
+    color: white;
+    border: none;
+    padding: 10px 20px;
+    border-radius: 5px;
+    cursor: pointer;
+    font-weight: bold;
+}
+
+/* ========================================
+   SISTEMA DE CARDS
+   ======================================== */
+.grid-container {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+    gap: 20px;
+}
+
+.card {
+    background: var(--card-bg);
+    border-radius: 12px;
+    padding: 20px;
+    box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+    border-left: 6px solid var(--success);
+    transition: transform 0.2s;
+    position: relative;
+}
+
+/* Estilo específico para cards do Histórico */
+.card.history-card {
+    border-left-color: var(--secondary) !important;
+    opacity: 0.9;
+    background-color: #f8f9fa;
+}
+
+/* ========================================
+   CONTEÚDO DOS CARDS
+   ======================================== */
+.card-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    margin-bottom: 10px;
+}
+
+.patient-name {
+    font-size: 18px;
+    font-weight: bold;
+    color: var(--text-dark);
+}
+
+.location {
+    font-size: 12px;
+    background: #eee;
+    padding: 4px 8px;
+    border-radius: 4px;
+    color: var(--text-light);
+}
+
+.drug-name {
+    font-size: 16px;
+    color: var(--primary);
+    font-weight: 600;
+}
+
+.history-card .drug-name {
+    color: var(--secondary);
+}
+
+.dates {
+    font-size: 12px;
+    color: var(--text-light);
+    margin-top: 5px;
+}
+
+/* ========================================
+   BARRA DE PROGRESSO
+   ======================================== */
+.progress-container {
+    background-color: #e9ecef;
+    border-radius: 5px;
+    height: 8px;
+    margin-top: 10px;
+    overflow: hidden;
+}
+
+.progress-bar {
+    height: 100%;
+    transition: width 0.3s;
+}
+
+.day-counter {
+    font-size: 20px;
+    font-weight: bold;
+    text-align: center;
+    margin-top: 15px;
+}
+
+/* ========================================
+   BOTÕES DE AÇÃO NOS CARDS
+   ======================================== */
+.actions {
+    display: flex;
+    gap: 5px;
+    border-top: 1px solid #eee;
+    padding-top: 15px;
+    margin-top: 15px;
+}
+
+.btn-sm {
+    flex: 1;
+    padding: 8px;
+    border: none;
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 12px;
+    color: white;
+}
+
+.btn-move {
+    background-color: #6c757d;
+}
+
+.btn-renew {
+    background-color: #17a2b8;
+}
+
+/* Botão de alta verde para ser positivo (fim de tratamento) */
+.btn-discharge {
+    background-color: var(--success);
+}
+
+.btn-restore {
+    background-color: #ffc107;
+    color: #333;
+}
+
+.btn-delete {
+    background-color: var(--danger);
+}
+
+/* ========================================
+   MENSAGENS DE ESTADO
+   ======================================== */
+.no-results {
+    grid-column: 1 / -1;
+    text-align: center;
+    color: var(--text-light);
+    margin-top: 20px;
+}
+
+/* ========================================
+   RESPONSIVIDADE
+   ======================================== */
+@media (max-width: 768px) {
+    header {
+        flex-direction: column;
+        align-items: flex-start;
+    }
+
+    .tab-container {
+        flex-direction: column;
+    }
+
+    .grid-container {
+        grid-template-columns: 1fr;
+    }
+
+    .add-panel {
+        flex-direction: column;
+    }
+
+    input, select {
+        width: 100%;
+    }
+}

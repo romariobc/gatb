@@ -1,0 +1,58 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="Sistema de Gestão de Antimicrobianos para ambiente hospitalar">
+    <meta name="keywords" content="antimicrobianos, antibióticos, gestão hospitalar, UTI">
+    <title>Gestão de Antimicrobianos</title>
+
+    <!-- Bibliotecas externas para geração de PDF -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.28/jspdf.plugin.autotable.min.js"></script>
+
+    <!-- Estilos da aplicação -->
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+    <!-- Cabeçalho principal -->
+    <header>
+        <h1>🏥 Gestão de Antimicrobianos</h1>
+        <button class="btn-export" onclick="exportPDF()">📄 Exportar Lista Atual</button>
+    </header>
+
+    <!-- Sistema de abas (Em Curso / Histórico) -->
+    <div class="tab-container">
+        <button class="tab-btn active" id="tabActive" onclick="switchTab('active')">Em Curso</button>
+        <button class="tab-btn" id="tabHistory" onclick="switchTab('history')">Histórico (Altas)</button>
+    </div>
+
+    <!-- Barra de busca -->
+    <div class="search-container">
+        <input
+            type="text"
+            id="searchInput"
+            class="search-input"
+            placeholder="🔍 Buscar paciente, leito ou droga..."
+            onkeyup="render()"
+            aria-label="Buscar pacientes">
+    </div>
+
+    <!-- Painel de adição de novo paciente -->
+    <div class="add-panel" id="addPanel">
+        <input type="text" id="pName" placeholder="Nome do Paciente" required aria-label="Nome do paciente">
+        <input type="number" id="pLoc" placeholder="Leito (Ex: 104)" required aria-label="Leito">
+        <input type="text" id="pDrug" placeholder="Antibiótico" required aria-label="Antibiótico">
+        <input type="date" id="pStart" required aria-label="Data de início">
+        <input type="number" id="pDuration" placeholder="Dias" style="max-width: 80px;" required min="1" aria-label="Duração em dias">
+        <button class="add-btn" onclick="addCard()">+ Adicionar</button>
+    </div>
+
+    <!-- Grade de cards dos pacientes -->
+    <div class="grid-container" id="cardGrid"></div>
+
+    <!-- Script principal da aplicação -->
+    <script src="script.js"></script>
+</body>
+</html>
