@@ -1,72 +1,149 @@
 /**
  * GATB - Gestão de Antimicrobianos
- * Arquivo JavaScript principal
+ * Arquivo JavaScript principal (Refatorado para API)
  *
  * Sistema de gestão de tratamentos com antimicrobianos
- * para ambiente hospitalar (UTI/enfermarias)
+ * Integração: SharePoint Lists via Power Automate
  */
 
 // ========================================
 // ESTADO DO SISTEMA
 // ========================================
-let currentTab = 'active'; // 'active' (em curso) ou 'history' (histórico)
+let currentTab = 'active'; // 'active' ou 'history'
 let patients = [];         // Lista de pacientes em tratamento ativo
 let history = [];          // Lista de pacientes que receberam alta
 
 // ========================================
-// INICIALIZAÇÃO E LOCALSTORAGE
+// CAMADA DE SERVIÇO (API)
 // ========================================
 
-/**
- * Carrega dados salvos no LocalStorage do navegador
- * Se não houver dados, cria paciente de exemplo
- */
-function loadData() {
-    const storedPatients = localStorage.getItem('antibio_patients');
-    const storedHistory = localStorage.getItem('antibio_history');
+const api = {
+    /**
+     * Busca todos os dados da API
+     */
+    async getAll() {
+        if (CONFIG.API_URL.includes("SEU-POWER-AUTOMATE")) {
+            console.warn("API URL não configurada. Usando modo offline simulado.");
+            return { patients: [], history: [] }; // Retorno vazio se não configurado
+        }
 
-    if (storedPatients) patients = JSON.parse(storedPatients);
-    if (storedHistory) history = JSON.parse(storedHistory);
+        try {
+            const res = await fetch(CONFIG.API_URL, { method: 'GET' });
+            if (!res.ok) throw new Error('Erro na requisição');
+            const data = await res.json();
+            // Espera-se que a API retorne { patients: [], history: [] }
+            // Ou retornamos uma lista flat e filtramos aqui. 
+            // Para simplificar, assumimos que o fluxo retorna { patients: [...], history: [...] }
+            return data;
+        } catch (error) {
+            console.error("Erro API:", error);
+            alert("Erro ao conectar com servidor.");
+            return { patients: [], history: [] };
+        }
+    },
 
-    // Dados de exemplo se estiver tudo vazio (primeiro uso)
-    if (!storedPatients && !storedHistory) {
-        patients = [
-            {
-                id: 1,
-                name: "Exemplo Silva",
-                location: "UTI-01",
-                drug: "Meropenem",
-                start: new Date().toISOString().split('T')[0],
-                duration: 7
-            }
-        ];
+    /**
+     * Cria um novo registro
+     */
+    async create(patient) {
+        return this._send('CREATE', { patient });
+    },
+
+    /**
+     * Atualiza um registro existente
+     */
+    async update(id, updates) {
+        return this._send('UPDATE', { id, ...updates });
+    },
+
+    /**
+     * Move para histórico (alta) ou restaura
+     */
+    async move(patient, targetList) {
+        // Enviar o objeto completo atualizado e a lista de destino
+        return this._send('MOVE', { patient, target: targetList });
+    },
+
+    /**
+     * Deleta um registro
+     */
+    async delete(id) {
+        return this._send('DELETE', { id });
+    },
+
+    /**
+     * Método auxiliar privado para envio
+     */
+    async _send(action, payload) {
+        if (CONFIG.API_URL.includes("SEU-POWER-AUTOMATE")) {
+            console.warn("Modo Offline: Ação simulada não persistida.");
+            return true;
+        }
+
+        try {
+            const res = await fetch(CONFIG.API_URL, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ action, ...payload })
+            });
+            return res.ok;
+        } catch (error) {
+            console.error("Erro API:", error);
+            alert("Erro ao salvar operação.");
+            return false;
+        }
     }
-}
+};
 
-/**
- * Salva dados no LocalStorage do navegador
- * Chamado após qualquer alteração nos dados
- */
-function saveData() {
-    localStorage.setItem('antibio_patients', JSON.stringify(patients));
-    localStorage.setItem('antibio_history', JSON.stringify(history));
+// ========================================
+// CONTROLE DE INTERFACE (LOADING)
+// ========================================
+
+function setLoading(isLoading) {
+    const overlay = document.getElementById('loadingOverlay');
+    if (isLoading) overlay.classList.remove('hidden');
+    else overlay.classList.add('hidden');
 }
 
 // ========================================
-// LÓGICA PRINCIPAL
+// INICIALIZAÇÃO
 // ========================================
 
+async function loadData() {
+    setLoading(true);
+
+    // Buscar dados da API
+    const data = await api.getAll();
+
+    // Se a API retornar formato { patients: [], history: [] }
+    if (data.patients) patients = data.patients;
+    if (data.history) history = data.history;
+
+    // Se estiver vazio e for modo mock, manter vazio ou lógica anterior
+    // (Código antigo de exemplo removido para focar na API)
+
+    setLoading(false);
+    render();
+}
+
 /**
- * Calcula informações de status do tratamento
- * @param {Object} p - Objeto do paciente
- * @returns {Object} Status com dias, texto, cor, porcentagem, etc.
+ * Função Wrapper para recarregar tudo após uma ação
  */
+async function reload() {
+    await loadData();
+    render(); // Redundante pois loadData chama render, mas garante
+}
+
+// ========================================
+// LÓGICA PRINCIPAL (Mantida similar, mas chamando API)
+// ========================================
+
 function getStatusInfo(p) {
+    // Mesma lógica anterior
     const today = new Date();
     today.setHours(0, 0, 0, 0);
     const startDate = new Date(p.start + 'T00:00:00');
 
-    // Calcula diferença em dias
     const diffTime = Math.abs(today - startDate);
     const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24)) + 1;
 
@@ -74,7 +151,6 @@ function getStatusInfo(p) {
     let color = 'var(--success)';
     let rawStatus = 'Em curso';
 
-    // Define cor e status baseado no progresso
     if (diffDays > p.duration) {
         color = 'var(--danger)';
         text = `VENCIDO (+${diffDays - p.duration})`;
@@ -88,65 +164,45 @@ function getStatusInfo(p) {
     return { diffDays, text, color, percent, rawStatus, startDate };
 }
 
-/**
- * Troca entre abas (Em Curso / Histórico)
- * @param {string} tab - 'active' ou 'history'
- */
 function switchTab(tab) {
     currentTab = tab;
-
-    // Atualiza estado visual dos botões de aba
     document.getElementById('tabActive').className = tab === 'active' ? 'tab-btn active' : 'tab-btn';
     document.getElementById('tabHistory').className = tab === 'history' ? 'tab-btn active' : 'tab-btn';
 
-    // Esconde/Mostra painel de adicionar paciente
     const addPanel = document.getElementById('addPanel');
-    if (tab === 'active') {
-        addPanel.classList.remove('hidden');
-    } else {
-        addPanel.classList.add('hidden');
-    }
+    if (tab === 'active') addPanel.classList.remove('hidden');
+    else addPanel.classList.add('hidden');
 
     render();
 }
 
-/**
- * Renderiza os cards na tela baseado na aba atual e filtro de busca
- */
 function render() {
     const grid = document.getElementById('cardGrid');
     const searchTerm = document.getElementById('searchInput').value.toLowerCase();
     grid.innerHTML = '';
 
-    // Decide qual lista usar baseado na aba atual
     let sourceArray = currentTab === 'active' ? patients : history;
 
-    // Aplica filtro de busca
     const filtered = sourceArray.filter(p =>
         p.name.toLowerCase().includes(searchTerm) ||
         p.drug.toLowerCase().includes(searchTerm) ||
         p.location.toLowerCase().includes(searchTerm)
     );
 
-    // Exibe mensagem se não houver resultados
     if (filtered.length === 0) {
         grid.innerHTML = `<div class="no-results">Nenhum registro encontrado em "${currentTab === 'active' ? 'Em Curso' : 'Histórico'}".</div>`;
         return;
     }
 
-    // Ordenação: Mais antigos primeiro na ativa, Mais recentes primeiro no histórico
     if (currentTab === 'active') {
         filtered.sort((a, b) => a.start.localeCompare(b.start));
     } else {
         filtered.sort((a, b) => (b.endDate || '').localeCompare(a.endDate || ''));
     }
 
-    // Gera HTML para cada paciente
     filtered.forEach(p => {
         let cardHTML = '';
-
         if (currentTab === 'active') {
-            // --- RENDER CARD ATIVO ---
             const status = getStatusInfo(p);
             cardHTML = `
                 <div class="card" style="border-left-color: ${status.color}">
@@ -169,7 +225,6 @@ function render() {
                     </div>
                 </div>`;
         } else {
-            // --- RENDER CARD HISTÓRICO ---
             cardHTML = `
                 <div class="card history-card">
                     <div class="card-header">
@@ -194,115 +249,96 @@ function render() {
 }
 
 // ========================================
-// AÇÕES DO USUÁRIO
+// AÇÕES DO USUÁRIO (Async)
 // ========================================
 
-/**
- * Adiciona novo paciente ao sistema
- * Valida campos e salva no LocalStorage
- */
-function addCard() {
+async function addCard() {
     const name = document.getElementById('pName').value;
     const loc = document.getElementById('pLoc').value;
     const drug = document.getElementById('pDrug').value;
     const start = document.getElementById('pStart').value;
     const dur = parseInt(document.getElementById('pDuration').value);
 
-    // Validação de campos
     if (name && loc && drug && start && dur) {
-        patients.push({
-            id: Date.now(),
-            name,
-            location: loc,
-            drug,
-            start,
-            duration: dur
-        });
-        saveData();
-        render();
+        setLoading(true);
 
-        // Limpa campos do formulário
+        const newPatient = {
+            id: Date.now(), // ID temporário, idealmente o SharePoint retorna o ID real
+            name, location: loc, drug, start, duration: dur
+        };
+
+        // Salvar na API
+        await api.create(newPatient);
+
+        // Limpar campos
         document.getElementById('pName').value = '';
         document.getElementById('pLoc').value = '';
         document.getElementById('pDrug').value = '';
         document.getElementById('pStart').value = '';
         document.getElementById('pDuration').value = '';
+
+        // Recarregar
+        await reload();
     } else {
         alert("Preencha todos os campos");
     }
 }
 
-/**
- * Dá alta ao paciente (move para histórico)
- * @param {number} id - ID do paciente
- */
-function discharge(id) {
-    const idx = patients.findIndex(x => x.id === id);
-    if (idx > -1) {
-        if (confirm("Confirmar alta/fim do tratamento? O paciente irá para o Histórico.")) {
-            const p = patients[idx];
-            p.endDate = new Date().toISOString().split('T')[0]; // Salva data de hoje
-            history.push(p); // Move para histórico
-            patients.splice(idx, 1); // Remove da lista ativa
-            saveData();
-            render();
-        }
+async function discharge(id) {
+    const p = patients.find(x => x.id === id);
+    if (!p) return;
+
+    if (confirm("Confirmar alta/fim do tratamento?")) {
+        setLoading(true);
+        p.endDate = new Date().toISOString().split('T')[0];
+
+        // Enviar atualização de status/lista
+        // Aqui assumimos que a API sabe mover baseada no payload ou action
+        await api.move(p, 'history');
+
+        await reload();
     }
 }
 
-/**
- * Restaura paciente do histórico para lista ativa
- * @param {number} id - ID do paciente
- */
-function restore(id) {
-    const idx = history.findIndex(x => x.id === id);
-    if (idx > -1) {
-        const p = history[idx];
-        delete p.endDate; // Remove data de fim
-        patients.push(p); // Volta para lista ativa
-        history.splice(idx, 1); // Remove do histórico
-        saveData();
-        switchTab('active'); // Leva usuário para aba ativa
-    }
+async function restore(id) {
+    const p = history.find(x => x.id === id);
+    if (!p) return;
+
+    setLoading(true);
+    delete p.endDate;
+
+    await api.move(p, 'patients'); // Mover de volta para lista ativa
+
+    await reload();
+    switchTab('active');
 }
 
-/**
- * Deleta permanentemente registro do histórico
- * @param {number} id - ID do paciente
- */
-function deletePermanent(id) {
+async function deletePermanent(id) {
     if (confirm("Tem certeza? Isso apagará o registro para sempre.")) {
-        history = history.filter(x => x.id !== id);
-        saveData();
-        render();
+        setLoading(true);
+        await api.delete(id);
+        await reload();
     }
 }
 
-/**
- * Move paciente para outro leito
- * @param {number} id - ID do paciente
- */
-function moveBed(id) {
+async function moveBed(id) {
     const p = patients.find(x => x.id === id);
     const newLoc = prompt(`Novo leito para ${p.name}:`, p.location);
     if (newLoc) {
-        p.location = newLoc;
-        saveData();
-        render();
+        setLoading(true);
+        await api.update(id, { location: newLoc });
+        await reload();
     }
 }
 
-/**
- * Renova/estende duração do tratamento
- * @param {number} id - ID do paciente
- */
-function renew(id) {
+async function renew(id) {
     const p = patients.find(x => x.id === id);
     const moreDays = prompt(`Adicionar quantos dias?`, "3");
     if (moreDays) {
-        p.duration += parseInt(moreDays);
-        saveData();
-        render();
+        setLoading(true);
+        const newDuration = p.duration + parseInt(moreDays);
+        await api.update(id, { duration: newDuration });
+        await reload();
     }
 }
 
@@ -310,37 +346,24 @@ function renew(id) {
 // UTILITÁRIOS
 // ========================================
 
-/**
- * Formata data YYYY-MM-DD para DD/MM
- * @param {string} dateString - Data no formato YYYY-MM-DD
- * @returns {string} Data formatada DD/MM
- */
 function formatDateBR(dateString) {
     if (!dateString) return '-';
     const [year, month, day] = dateString.split('-');
     return `${day}/${month}`;
 }
 
-/**
- * Exporta lista atual para PDF
- * Usa biblioteca jsPDF para gerar documento
- */
 function exportPDF() {
+    // ... Mantido igual ...
     const { jsPDF } = window.jspdf;
     const doc = new jsPDF();
-
-    const title = currentTab === 'active'
-        ? "Relatório: Em Curso (Ativos)"
-        : "Relatório: Histórico de Altas";
+    const title = currentTab === 'active' ? "Relatório: Em Curso (Ativos)" : "Relatório: Histórico de Altas";
     const sourceArray = currentTab === 'active' ? patients : history;
 
-    // Cabeçalho do PDF
     doc.setFontSize(16);
     doc.text(title, 14, 20);
     doc.setFontSize(10);
     doc.text(`Gerado em: ${new Date().toLocaleDateString('pt-BR')}`, 14, 28);
 
-    // Prepara dados para tabela
     const tableData = sourceArray.map(p => {
         if (currentTab === 'active') {
             const s = getStatusInfo(p);
@@ -350,28 +373,22 @@ function exportPDF() {
         }
     });
 
-    // Define cabeçalhos da tabela
     const headers = currentTab === 'active'
         ? [['Paciente', 'Local', 'ATB', 'Início', 'Progresso', 'Status']]
         : [['Paciente', 'Local', 'ATB', 'Início', 'Fim', 'Status']];
 
-    // Gera tabela no PDF
     doc.autoTable({
         head: headers,
         body: tableData,
         startY: 35,
         theme: 'grid',
-        headStyles: {
-            fillColor: currentTab === 'active' ? [0, 123, 255] : [108, 117, 125]
-        }
+        headStyles: { fillColor: currentTab === 'active' ? [0, 123, 255] : [108, 117, 125] }
     });
 
-    // Baixa o arquivo
     doc.save(`antibioticos_${currentTab}.pdf`);
 }
 
 // ========================================
-// INICIALIZAÇÃO
+// START
 // ========================================
 loadData();
-render();
