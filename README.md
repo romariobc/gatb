@@ -11,15 +11,18 @@ O GATB é uma aplicação web moderna e intuitiva desenvolvida para facilitar o 
 - 📅 Contador automático de dias de tratamento
 - 🔍 Busca em tempo real por paciente, leito ou medicamento
 - 📄 Exportação de relatórios em PDF
-- 💾 Armazenamento local no navegador (sem necessidade de servidor)
+- 💾 Armazenamento em nuvem (SharePoint List)
+- ☁️ API Serverless via Power Automate
+- 📄 Exportação de relatórios em PDF
 - 📱 Interface responsiva (funciona em tablets e celulares)
 
 ## 🚀 Tecnologias Utilizadas
 
 - **HTML5** - Estrutura semântica
 - **CSS3** - Estilos com variáveis CSS
-- **JavaScript Vanilla** - Lógica da aplicação (sem frameworks)
-- **LocalStorage** - Persistência de dados
+- **JavaScript Vanilla** - Lógica da aplicação
+- **Power Automate** - Camada de API (Backend)
+- **SharePoint Lists** - Banco de dados
 - **jsPDF** - Geração de relatórios PDF
 - **Azure Static Web Apps** - Hospedagem e deploy
 
@@ -29,8 +32,10 @@ O GATB é uma aplicação web moderna e intuitiva desenvolvida para facilitar o 
 gatb/
 ├── .github/
 │   └── workflows/
-│       └── azure-static-web-apps.yml    # Workflow de deploy automático
+├── docs/
+│   └── backend_setup.md         # Guia de configuração do Backend
 ├── public/
+│   ├── config.js                        # Configuração da API
 │   ├── index.html                       # Estrutura HTML
 │   ├── style.css                        # Estilos da aplicação
 │   └── script.js                        # Lógica JavaScript
@@ -88,6 +93,11 @@ npx http-server
 ```
 
 Acesse: `http://localhost:8000`
+
+### Configuração do Backend
+Para que a aplicação funcione corretamente (salvar dados na nuvem), você precisa configurar o `public/config.js` com a URL do seu Power Automate.
+
+👉 **[Leia o Guia de Configuração do Backend](docs/backend_setup.md)** para saber como criar a lista no SharePoint e o fluxo no Power Automate.
 
 ### Opção 2: Abrir diretamente no navegador
 
@@ -218,10 +228,9 @@ O arquivo `staticwebapp.config.json` configura automaticamente:
 ### Armazenamento de Dados
 
 ⚠️ **IMPORTANTE**:
-- Os dados são armazenados **apenas no navegador** do usuário (LocalStorage)
-- **Nenhum dado de paciente** é enviado para servidores Azure
-- Limpar cache do navegador apaga os dados
-- Recomenda-se backup periódico via exportação PDF
+- Os dados são armazenados na sua **Lista do SharePoint** privada.
+- A comunicação é feita via **Power Automate**.
+- O arquivo `config.js` contém a URL pública do seu fluxo (API). Mantenha-a segura ou restrinja o acesso no Power Automate se necessário.
 
 ### LGPD e Dados Sensíveis
 
