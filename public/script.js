@@ -22,19 +22,10 @@ const api = {
      * Busca todos os dados da API
      */
     async getAll() {
-        if (CONFIG.API_URL.includes("SEU-POWER-AUTOMATE")) {
-            console.warn("API URL não configurada. Usando modo offline simulado.");
-            return { patients: [], history: [] }; // Retorno vazio se não configurado
-        }
-
         try {
-            const res = await fetch(CONFIG.API_URL, { method: 'GET' });
+            const res = await fetch(`${CONFIG.API_BASE}/patients`);
             if (!res.ok) throw new Error('Erro na requisição');
-            const data = await res.json();
-            // Espera-se que a API retorne { patients: [], history: [] }
-            // Ou retornamos uma lista flat e filtramos aqui. 
-            // Para simplificar, assumimos que o fluxo retorna { patients: [...], history: [...] }
-            return data;
+            return await res.json(); // Retorna { patients: [], history: [] }
         } catch (error) {
             console.error("Erro API:", error);
             alert("Erro ao conectar com servidor.");
@@ -46,50 +37,57 @@ const api = {
      * Cria um novo registro
      */
     async create(patient) {
-        return this._send('CREATE', { patient });
+        try {
+            const res = await fetch(`${CONFIG.API_BASE}/patients`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(patient)
+            });
+            return res.ok;
+        } catch (error) {
+            console.error("Erro ao criar:", error);
+            return false;
+        }
     },
 
     /**
      * Atualiza um registro existente
      */
     async update(id, updates) {
-        return this._send('UPDATE', { id, ...updates });
+        try {
+            const res = await fetch(`${CONFIG.API_BASE}/patients/${id}`, {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(updates)
+            });
+            return res.ok;
+        } catch (error) {
+            console.error("Erro ao atualizar:", error);
+            return false;
+        }
     },
 
     /**
      * Move para histórico (alta) ou restaura
      */
     async move(patient, targetList) {
-        // Enviar o objeto completo atualizado e a lista de destino
-        return this._send('MOVE', { patient, target: targetList });
+        // Define o novo status baseado na lista de destino
+        const status = targetList === 'history' ? 'history' : 'active';
+        // Chama o update passando o status atualizado e quaisquer outras propriedades alteradas (já presentes em patient)
+        return this.update(patient.id, { ...patient, status });
     },
 
     /**
      * Deleta um registro
      */
     async delete(id) {
-        return this._send('DELETE', { id });
-    },
-
-    /**
-     * Método auxiliar privado para envio
-     */
-    async _send(action, payload) {
-        if (CONFIG.API_URL.includes("SEU-POWER-AUTOMATE")) {
-            console.warn("Modo Offline: Ação simulada não persistida.");
-            return true;
-        }
-
         try {
-            const res = await fetch(CONFIG.API_URL, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ action, ...payload })
+            const res = await fetch(`${CONFIG.API_BASE}/patients/${id}`, {
+                method: 'DELETE'
             });
             return res.ok;
         } catch (error) {
-            console.error("Erro API:", error);
-            alert("Erro ao salvar operação.");
+            console.error("Erro ao deletar:", error);
             return false;
         }
     }

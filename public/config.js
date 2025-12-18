@@ -1,11 +1,9 @@
 /**
  * GATB - Configuração
  * 
- * Define o endpoint da API (Power Automate).
- * Para produção, substitua pela URL do seu fluxo.
+ * Define o endpoint base da API (Azure Functions).
  */
 const CONFIG = {
-    // URL de Exemplo (Placeholder)
-    // Quando criar o fluxo no Power Automate, cole a URL gerada aqui.
-    API_URL: "https://SEU-POWER-AUTOMATE-URL-AQUI"
+    // API Route Base (Azure Static Web Apps proxies /api to Functions)
+    API_BASE: "/api"
 };
