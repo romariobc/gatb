@@ -32,6 +32,6 @@
     ".html": "text/html"
   },
   "platform": {
-    "apiRuntime": "node:16"
+    "apiRuntime": "node:18"
   }
 }
