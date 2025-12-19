@@ -31,7 +31,7 @@ jobs:
           action: "upload"
           ###### Configurações do repositório/build ######
           app_location: "/public" # Localização do código da aplicação
-          api_location: "" # Localização das Azure Functions (vazio se não houver)
+          api_location: "/api" # Localização das Azure Functions
           output_location: "" # Localização dos arquivos de build (vazio para apps sem build)
           ###### Fim das configurações ######
 
