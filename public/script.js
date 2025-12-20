@@ -217,9 +217,9 @@ function render() {
                         <div class="progress-bar" style="width: ${status.percent}%; background-color: ${status.color}"></div>
                     </div>
                     <div class="actions">
-                        <button class="btn-sm btn-move" onclick="moveBed(${p.id})">📍 Leito</button>
-                        <button class="btn-sm btn-renew" onclick="renew(${p.id})">🔄 +Dias</button>
-                        <button class="btn-sm btn-discharge" onclick="discharge(${p.id})">✅ Alta</button>
+                        <button class="btn-sm btn-move" onclick="moveBed('${p.id}')">📍 Leito</button>
+                        <button class="btn-sm btn-renew" onclick="renew('${p.id}')">🔄 +Dias</button>
+                        <button class="btn-sm btn-discharge" onclick="discharge('${p.id}')">✅ Alta</button>
                     </div>
                 </div>`;
         } else {
@@ -237,8 +237,8 @@ function render() {
                         </div>
                     </div>
                     <div class="actions">
-                        <button class="btn-sm btn-restore" onclick="restore(${p.id})">↩ Restaurar</button>
-                        <button class="btn-sm btn-delete" onclick="deletePermanent(${p.id})">🗑 Excluir</button>
+                        <button class="btn-sm btn-restore" onclick="restore('${p.id}')">↩ Restaurar</button>
+                        <button class="btn-sm btn-delete" onclick="deletePermanent('${p.id}')">🗑 Excluir</button>
                     </div>
                 </div>`;
         }
