@@ -122,6 +122,9 @@ async function loadData() {
 
     setLoading(false);
     render();
+
+    // Pré-preencher formulários com dados salvos
+    prefillMessageForms();
 }
 
 /**
@@ -454,6 +457,108 @@ async function renew(id) {
     }
 }
 
+/**
+ * Adiciona nova mensagem ao paciente
+ * @param {string} patientId - ID do paciente
+ */
+async function addMessage(patientId) {
+    // 1. Obter valores dos campos
+    const authorInput = document.getElementById(`author-${patientId}`);
+    const roleSelect = document.getElementById(`role-${patientId}`);
+    const contentTextarea = document.getElementById(`msg-${patientId}`);
+    const typeSelect = document.getElementById(`type-${patientId}`);
+
+    const author = authorInput.value.trim();
+    const role = roleSelect.value;
+    const content = contentTextarea.value.trim();
+    const type = typeSelect.value;
+
+    // 2. Validação de campos obrigatórios
+    if (!author) {
+        alert("⚠️ Por favor, informe seu nome.");
+        authorInput.focus();
+        return;
+    }
+
+    if (!content) {
+        alert("⚠️ Por favor, escreva uma mensagem.");
+        contentTextarea.focus();
+        return;
+    }
+
+    if (content.length < 3) {
+        alert("⚠️ A mensagem deve ter pelo menos 3 caracteres.");
+        contentTextarea.focus();
+        return;
+    }
+
+    // 3. Buscar paciente (em ambos os arrays)
+    const patient = [...patients, ...history].find(p => p.id === patientId);
+
+    if (!patient) {
+        alert("❌ Erro: Paciente não encontrado.");
+        return;
+    }
+
+    // 4. Criar objeto de mensagem
+    const newMessage = {
+        id: `msg_${Date.now()}`,
+        author,
+        authorId: null, // Futuro: integrar com sistema de autenticação
+        role,
+        content,
+        timestamp: new Date().toISOString(),
+        type,
+        edited: false,
+        editedAt: null
+    };
+
+    // 5. Adicionar mensagem ao array (ou criar array se não existe)
+    if (!patient.messages) {
+        patient.messages = [];
+    }
+    patient.messages.push(newMessage);
+
+    // 6. Persistir nome do autor no LocalStorage
+    saveAuthorToLocalStorage(author, role);
+
+    // 7. Salvar no backend
+    setLoading(true);
+    const success = await api.update(patientId, { messages: patient.messages });
+
+    if (success) {
+        // 8. Limpar formulário
+        authorInput.value = '';
+        contentTextarea.value = '';
+        typeSelect.value = 'observation'; // Reset para padrão
+
+        // 9. Recarregar dados
+        await reload();
+
+        // 10. Expandir timeline e scroll até nova mensagem
+        const timeline = document.getElementById(`messages-${patientId}`);
+        const header = timeline.previousElementSibling;
+        const btn = header.querySelector('.btn-toggle');
+
+        if (timeline.classList.contains('hidden')) {
+            timeline.classList.remove('hidden');
+            btn.classList.add('expanded');
+        }
+
+        // Auto-scroll para o topo (mensagens mais recentes)
+        timeline.scrollTop = 0;
+
+        // Pré-preencher nome para próxima mensagem
+        const savedAuthor = getAuthorFromLocalStorage();
+        if (savedAuthor) {
+            document.getElementById(`author-${patientId}`).value = savedAuthor.name;
+            document.getElementById(`role-${patientId}`).value = savedAuthor.role;
+        }
+    } else {
+        alert("❌ Erro ao salvar mensagem. Tente novamente.");
+    }
+}
+
 // ========================================
 // UTILITÁRIOS
 // ========================================
@@ -503,6 +608,55 @@ function getMessageTypeLabel(type) {
         alert: 'Alerta'
     };
     return labels[type] || 'Observação';
+}
+
+/**
+ * Salva dados do autor no LocalStorage
+ * @param {string} name - Nome do profissional
+ * @param {string} role - Cargo/Especialidade
+ */
+function saveAuthorToLocalStorage(name, role) {
+    try {
+        const authorData = { name, role, savedAt: new Date().toISOString() };
+        localStorage.setItem('gatb_author', JSON.stringify(authorData));
+    } catch (error) {
+        console.warn('Não foi possível salvar autor no LocalStorage:', error);
+    }
+}
+
+/**
+ * Recupera dados do autor do LocalStorage
+ * @returns {Object|null} Dados do autor ou null se não existir
+ */
+function getAuthorFromLocalStorage() {
+    try {
+        const data = localStorage.getItem('gatb_author');
+        return data ? JSON.parse(data) : null;
+    } catch (error) {
+        console.warn('Erro ao recuperar autor do LocalStorage:', error);
+        return null;
+    }
+}
+
+/**
+ * Pré-preenche formulários de mensagens com dados salvos
+ */
+function prefillMessageForms() {
+    const savedAuthor = getAuthorFromLocalStorage();
+    if (!savedAuthor) return;
+
+    // Preencher todos os formulários visíveis
+    document.querySelectorAll('[id^="author-"]').forEach(input => {
+        if (input.value === '') {
+            input.value = savedAuthor.name;
+        }
+    });
+
+    document.querySelectorAll('[id^="role-"]').forEach(select => {
+        if (select.value && savedAuthor.role) {
+            select.value = savedAuthor.role;
+        }
+    });
 }
 
 function exportPDF() {
