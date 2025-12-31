@@ -122,6 +122,9 @@ async function loadData() {
 
     setLoading(false);
     render();
+
+    // Pré-preencher formulários com dados salvos
+    prefillMessageForms();
 }
 
 /**
@@ -160,6 +163,102 @@ function getStatusInfo(p) {
 
     const percent = Math.min((diffDays / p.duration) * 100, 100);
     return { diffDays, text, color, percent, rawStatus, startDate };
+}
+
+// ========================================
+// RENDERIZAÇÃO DE COMPONENTES
+// ========================================
+
+/**
+ * Renderiza formulário de nova mensagem
+ * @param {string} patientId - ID do paciente
+ * @returns {string} HTML do formulário
+ */
+function renderMessageForm(patientId) {
+    return `
+        <div class="add-message-form">
+            <input
+                type="text"
+                id="author-${patientId}"
+                placeholder="Seu nome"
+                aria-label="Nome do profissional"
+            />
+            <select id="role-${patientId}" aria-label="Cargo/Especialidade">
+                <option value="Médico(a)">Médico(a)</option>
+                <option value="Enfermeiro(a)">Enfermeiro(a)</option>
+                <option value="Farmacêutico(a)">Farmacêutico(a)</option>
+                <option value="Fisioterapeuta">Fisioterapeuta</option>
+                <option value="Nutricionista">Nutricionista</option>
+                <option value="Outro">Outro</option>
+            </select>
+            <textarea
+                id="msg-${patientId}"
+                placeholder="Digite sua mensagem, observação ou dúvida..."
+                aria-label="Conteúdo da mensagem"
+            ></textarea>
+            <select id="type-${patientId}" aria-label="Tipo de mensagem">
+                <option value="observation">💬 Observação</option>
+                <option value="question">❓ Dúvida</option>
+                <option value="alert">⚠️ Alerta</option>
+            </select>
+            <button onclick="addMessage('${patientId}')">Enviar Mensagem</button>
+        </div>
+    `;
+}
+
+/**
+ * Renderiza seção completa de mensagens do paciente
+ * @param {Object} patient - Objeto do paciente
+ * @returns {string} HTML da seção de mensagens
+ */
+function renderMessages(patient) {
+    // Se não há mensagens
+    if (!patient.messages || patient.messages.length === 0) {
+        return `
+            <div class="messages-section">
+                <div class="messages-header" onclick="toggleMessages('${patient.id}')">
+                    <span>💬 Mensagens (0)</span>
+                    <button class="btn-toggle" aria-label="Expandir mensagens">▼</button>
+                </div>
+                <div id="messages-${patient.id}" class="messages-timeline hidden">
+                    <p class="messages-empty">Nenhuma mensagem ainda. Seja o primeiro a comentar!</p>
+                    ${renderMessageForm(patient.id)}
+                </div>
+            </div>
+        `;
+    }
+
+    // Ordenar mensagens por timestamp (mais recentes primeiro)
+    const sortedMessages = [...patient.messages].sort((a, b) =>
+        new Date(b.timestamp) - new Date(a.timestamp)
+    );
+
+    // Renderizar cada mensagem
+    const messagesHTML = sortedMessages.map(msg => `
+        <div class="message">
+            <div class="message-header">
+                <strong>${escapeHTML(msg.author)}</strong>
+                ${msg.role ? `<span class="message-role">${escapeHTML(msg.role)}</span>` : ''}
+                <span class="message-time">${formatDateTime(msg.timestamp)}</span>
+            </div>
+            <div class="message-content">${escapeHTML(msg.content)}</div>
+            <span class="message-badge ${msg.type}">${getMessageTypeLabel(msg.type)}</span>
+        </div>
+    `).join('');
+
+    // Retornar seção completa
+    return `
+        <div class="messages-section">
+            <div class="messages-header" onclick="toggleMessages('${patient.id}')">
+                <span>💬 Mensagens (${patient.messages.length})</span>
+                <button class="btn-toggle" aria-label="Expandir mensagens">▼</button>
+            </div>
+            <div id="messages-${patient.id}" class="messages-timeline hidden">
+                ${messagesHTML}
+                ${renderMessageForm(patient.id)}
+            </div>
+        </div>
+    `;
 }
 
 function switchTab(tab) {
@@ -221,6 +320,7 @@ function render() {
                         <button class="btn-sm btn-renew" onclick="renew('${p.id}')">🔄 +Dias</button>
                         <button class="btn-sm btn-discharge" onclick="discharge('${p.id}')">✅ Alta</button>
                     </div>
+                    ${renderMessages(p)}
                 </div>`;
         } else {
             cardHTML = `
@@ -240,10 +340,27 @@ function render() {
                         <button class="btn-sm btn-restore" onclick="restore('${p.id}')">↩ Restaurar</button>
                         <button class="btn-sm btn-delete" onclick="deletePermanent('${p.id}')">🗑 Excluir</button>
                     </div>
+                    ${renderMessages(p)}
                 </div>`;
         }
         grid.innerHTML += cardHTML;
     });
+}
+
+/**
+ * Alterna visibilidade da timeline de mensagens
+ * @param {string} patientId - ID do paciente
+ */
+function toggleMessages(patientId) {
+    const timeline = document.getElementById(`messages-${patientId}`);
+    const header = event.target.closest('.messages-header');
+    const btn = header.querySelector('.btn-toggle');
+
+    // Toggle visibilidade
+    timeline.classList.toggle('hidden');
+
+    // Animar botão
+    btn.classList.toggle('expanded');
 }
 
 // ========================================
@@ -340,6 +457,108 @@ async function renew(id) {
     }
 }
 
+/**
+ * Adiciona nova mensagem ao paciente
+ * @param {string} patientId - ID do paciente
+ */
+async function addMessage(patientId) {
+    // 1. Obter valores dos campos
+    const authorInput = document.getElementById(`author-${patientId}`);
+    const roleSelect = document.getElementById(`role-${patientId}`);
+    const contentTextarea = document.getElementById(`msg-${patientId}`);
+    const typeSelect = document.getElementById(`type-${patientId}`);
+
+    const author = authorInput.value.trim();
+    const role = roleSelect.value;
+    const content = contentTextarea.value.trim();
+    const type = typeSelect.value;
+
+    // 2. Validação de campos obrigatórios
+    if (!author) {
+        alert("⚠️ Por favor, informe seu nome.");
+        authorInput.focus();
+        return;
+    }
+
+    if (!content) {
+        alert("⚠️ Por favor, escreva uma mensagem.");
+        contentTextarea.focus();
+        return;
+    }
+
+    if (content.length < 3) {
+        alert("⚠️ A mensagem deve ter pelo menos 3 caracteres.");
+        contentTextarea.focus();
+        return;
+    }
+
+    // 3. Buscar paciente (em ambos os arrays)
+    const patient = [...patients, ...history].find(p => p.id === patientId);
+
+    if (!patient) {
+        alert("❌ Erro: Paciente não encontrado.");
+        return;
+    }
+
+    // 4. Criar objeto de mensagem
+    const newMessage = {
+        id: `msg_${Date.now()}`,
+        author,
+        authorId: null, // Futuro: integrar com sistema de autenticação
+        role,
+        content,
+        timestamp: new Date().toISOString(),
+        type,
+        edited: false,
+        editedAt: null
+    };
+
+    // 5. Adicionar mensagem ao array (ou criar array se não existe)
+    if (!patient.messages) {
+        patient.messages = [];
+    }
+    patient.messages.push(newMessage);
+
+    // 6. Persistir nome do autor no LocalStorage
+    saveAuthorToLocalStorage(author, role);
+
+    // 7. Salvar no backend
+    setLoading(true);
+    const success = await api.update(patientId, { messages: patient.messages });
+
+    if (success) {
+        // 8. Limpar formulário
+        authorInput.value = '';
+        contentTextarea.value = '';
+        typeSelect.value = 'observation'; // Reset para padrão
+
+        // 9. Recarregar dados
+        await reload();
+
+        // 10. Expandir timeline e scroll até nova mensagem
+        const timeline = document.getElementById(`messages-${patientId}`);
+        const header = timeline.previousElementSibling;
+        const btn = header.querySelector('.btn-toggle');
+
+        if (timeline.classList.contains('hidden')) {
+            timeline.classList.remove('hidden');
+            btn.classList.add('expanded');
+        }
+
+        // Auto-scroll para o topo (mensagens mais recentes)
+        timeline.scrollTop = 0;
+
+        // Pré-preencher nome para próxima mensagem
+        const savedAuthor = getAuthorFromLocalStorage();
+        if (savedAuthor) {
+            document.getElementById(`author-${patientId}`).value = savedAuthor.name;
+            document.getElementById(`role-${patientId}`).value = savedAuthor.role;
+        }
+    } else {
+        alert("❌ Erro ao salvar mensagem. Tente novamente.");
+    }
+}
+
 // ========================================
 // UTILITÁRIOS
 // ========================================
@@ -389,6 +608,55 @@ function getMessageTypeLabel(type) {
         alert: 'Alerta'
     };
     return labels[type] || 'Observação';
+}
+
+/**
+ * Salva dados do autor no LocalStorage
+ * @param {string} name - Nome do profissional
+ * @param {string} role - Cargo/Especialidade
+ */
+function saveAuthorToLocalStorage(name, role) {
+    try {
+        const authorData = { name, role, savedAt: new Date().toISOString() };
+        localStorage.setItem('gatb_author', JSON.stringify(authorData));
+    } catch (error) {
+        console.warn('Não foi possível salvar autor no LocalStorage:', error);
+    }
+}
+
+/**
+ * Recupera dados do autor do LocalStorage
+ * @returns {Object|null} Dados do autor ou null se não existir
+ */
+function getAuthorFromLocalStorage() {
+    try {
+        const data = localStorage.getItem('gatb_author');
+        return data ? JSON.parse(data) : null;
+    } catch (error) {
+        console.warn('Erro ao recuperar autor do LocalStorage:', error);
+        return null;
+    }
+}
+
+/**
+ * Pré-preenche formulários de mensagens com dados salvos
+ */
+function prefillMessageForms() {
+    const savedAuthor = getAuthorFromLocalStorage();
+    if (!savedAuthor) return;
+
+    // Preencher todos os formulários visíveis
+    document.querySelectorAll('[id^="author-"]').forEach(input => {
+        if (input.value === '') {
+            input.value = savedAuthor.name;
+        }
+    });
+
+    document.querySelectorAll('[id^="role-"]').forEach(select => {
+        if (select.value && savedAuthor.role) {
+            select.value = savedAuthor.role;
+        }
+    });
 }
 
 function exportPDF() {
