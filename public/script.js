@@ -162,6 +162,102 @@ function getStatusInfo(p) {
     return { diffDays, text, color, percent, rawStatus, startDate };
 }
 
+// ========================================
+// RENDERIZAÇÃO DE COMPONENTES
+// ========================================
+
+/**
+ * Renderiza formulário de nova mensagem
+ * @param {string} patientId - ID do paciente
+ * @returns {string} HTML do formulário
+ */
+function renderMessageForm(patientId) {
+    return `
+        <div class="add-message-form">
+            <input
+                type="text"
+                id="author-${patientId}"
+                placeholder="Seu nome"
+                aria-label="Nome do profissional"
+            />
+            <select id="role-${patientId}" aria-label="Cargo/Especialidade">
+                <option value="Médico(a)">Médico(a)</option>
+                <option value="Enfermeiro(a)">Enfermeiro(a)</option>
+                <option value="Farmacêutico(a)">Farmacêutico(a)</option>
+                <option value="Fisioterapeuta">Fisioterapeuta</option>
+                <option value="Nutricionista">Nutricionista</option>
+                <option value="Outro">Outro</option>
+            </select>
+            <textarea
+                id="msg-${patientId}"
+                placeholder="Digite sua mensagem, observação ou dúvida..."
+                aria-label="Conteúdo da mensagem"
+            ></textarea>
+            <select id="type-${patientId}" aria-label="Tipo de mensagem">
+                <option value="observation">💬 Observação</option>
+                <option value="question">❓ Dúvida</option>
+                <option value="alert">⚠️ Alerta</option>
+            </select>
+            <button onclick="addMessage('${patientId}')">Enviar Mensagem</button>
+        </div>
+    `;
+}
+
+/**
+ * Renderiza seção completa de mensagens do paciente
+ * @param {Object} patient - Objeto do paciente
+ * @returns {string} HTML da seção de mensagens
+ */
+function renderMessages(patient) {
+    // Se não há mensagens
+    if (!patient.messages || patient.messages.length === 0) {
+        return `
+            <div class="messages-section">
+                <div class="messages-header" onclick="toggleMessages('${patient.id}')">
+                    <span>💬 Mensagens (0)</span>
+                    <button class="btn-toggle" aria-label="Expandir mensagens">▼</button>
+                </div>
+                <div id="messages-${patient.id}" class="messages-timeline hidden">
+                    <p class="messages-empty">Nenhuma mensagem ainda. Seja o primeiro a comentar!</p>
+                    ${renderMessageForm(patient.id)}
+                </div>
+            </div>
+        `;
+    }
+
+    // Ordenar mensagens por timestamp (mais recentes primeiro)
+    const sortedMessages = [...patient.messages].sort((a, b) =>
+        new Date(b.timestamp) - new Date(a.timestamp)
+    );
+
+    // Renderizar cada mensagem
+    const messagesHTML = sortedMessages.map(msg => `
+        <div class="message">
+            <div class="message-header">
+                <strong>${escapeHTML(msg.author)}</strong>
+                ${msg.role ? `<span class="message-role">${escapeHTML(msg.role)}</span>` : ''}
+                <span class="message-time">${formatDateTime(msg.timestamp)}</span>
+            </div>
+            <div class="message-content">${escapeHTML(msg.content)}</div>
+            <span class="message-badge ${msg.type}">${getMessageTypeLabel(msg.type)}</span>
+        </div>
+    `).join('');
+
+    // Retornar seção completa
+    return `
+        <div class="messages-section">
+            <div class="messages-header" onclick="toggleMessages('${patient.id}')">
+                <span>💬 Mensagens (${patient.messages.length})</span>
+                <button class="btn-toggle" aria-label="Expandir mensagens">▼</button>
+            </div>
+            <div id="messages-${patient.id}" class="messages-timeline hidden">
+                ${messagesHTML}
+                ${renderMessageForm(patient.id)}
+            </div>
+        </div>
+    `;
+}
+
 function switchTab(tab) {
     currentTab = tab;
     document.getElementById('tabActive').className = tab === 'active' ? 'tab-btn active' : 'tab-btn';
@@ -221,6 +317,7 @@ function render() {
                         <button class="btn-sm btn-renew" onclick="renew('${p.id}')">🔄 +Dias</button>
                         <button class="btn-sm btn-discharge" onclick="discharge('${p.id}')">✅ Alta</button>
                     </div>
+                    ${renderMessages(p)}
                 </div>`;
         } else {
             cardHTML = `
@@ -240,10 +337,27 @@ function render() {
                         <button class="btn-sm btn-restore" onclick="restore('${p.id}')">↩ Restaurar</button>
                         <button class="btn-sm btn-delete" onclick="deletePermanent('${p.id}')">🗑 Excluir</button>
                     </div>
+                    ${renderMessages(p)}
                 </div>`;
         }
         grid.innerHTML += cardHTML;
     });
+}
+
+/**
+ * Alterna visibilidade da timeline de mensagens
+ * @param {string} patientId - ID do paciente
+ */
+function toggleMessages(patientId) {
+    const timeline = document.getElementById(`messages-${patientId}`);
+    const header = event.target.closest('.messages-header');
+    const btn = header.querySelector('.btn-toggle');
+
+    // Toggle visibilidade
+    timeline.classList.toggle('hidden');
+
+    // Animar botão
+    btn.classList.toggle('expanded');
 }
 
 // ========================================
