@@ -350,6 +350,47 @@ function formatDateBR(dateString) {
     return `${day}/${month}`;
 }
 
+/**
+ * Sanitiza texto para prevenir XSS em HTML
+ * @param {string} text - Texto a ser sanitizado
+ * @returns {string} Texto seguro para inserir em HTML
+ */
+function escapeHTML(text) {
+    if (!text) return '';
+    const div = document.createElement('div');
+    div.textContent = text;
+    return div.innerHTML;
+}
+
+/**
+ * Formata data/hora ISO para formato brasileiro com hora
+ * @param {string} isoString - Data ISO (2025-01-20T14:30:00Z)
+ * @returns {string} Data formatada (20/01 14:30)
+ */
+function formatDateTime(isoString) {
+    if (!isoString) return '-';
+    const date = new Date(isoString);
+    const day = String(date.getDate()).padStart(2, '0');
+    const month = String(date.getMonth() + 1).padStart(2, '0');
+    const hours = String(date.getHours()).padStart(2, '0');
+    const minutes = String(date.getMinutes()).padStart(2, '0');
+    return `${day}/${month} ${hours}:${minutes}`;
+}
+
+/**
+ * Retorna label amigável para tipo de mensagem
+ * @param {string} type - Tipo da mensagem (observation|question|alert)
+ * @returns {string} Label em português
+ */
+function getMessageTypeLabel(type) {
+    const labels = {
+        observation: 'Observação',
+        question: 'Dúvida',
+        alert: 'Alerta'
+    };
+    return labels[type] || 'Observação';
+}
+
 function exportPDF() {
     // ... Mantido igual ...
     const { jsPDF } = window.jspdf;
