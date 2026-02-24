@@ -2,6 +2,10 @@
 
 Sistema web para gerenciamento de tratamentos com antimicrobianos em ambiente hospitalar (UTI/enfermarias).
 
+## 🌐 Acesso
+
+**[Gestão de Antimicrobianos](https://gentle-island-0ca844710.4.azurestaticapps.net)**
+
 ## 📋 Sobre o Projeto
 
 O GATB é uma aplicação web moderna e intuitiva desenvolvida para facilitar o controle de pacientes em tratamento com antibióticos. O sistema oferece:
